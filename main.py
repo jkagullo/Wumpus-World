@@ -118,6 +118,15 @@ class GameScreen:
         self.play_again_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 100, button_width, button_height)
         self.exit_game_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 200, button_width, button_height)
 
+    def reset_game(self):
+        # Reset the agent's position
+        self.agent.x = 0
+        self.agent.y = 0
+
+        # Reset the positions of game elements
+        for element in self.game_elements:
+            element.reset()
+
     def game_over_popup(self, message):
         print(message)
         return False
@@ -146,6 +155,7 @@ class GameScreen:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = event.pos
                     if self.play_again_button.collidepoint(mouse_pos):
+                        self.reset_game()  # Reset the game
                         return True
                     elif self.exit_game_button.collidepoint(mouse_pos):
                         return False
