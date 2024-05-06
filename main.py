@@ -3,6 +3,7 @@ import sys
 import random
 import time
 
+# TO DO: 1. rules of inference. 2. fog. 3. darken background
 class Agent:
     def __init__(self, cell_size):
         self.x = 0
@@ -206,6 +207,8 @@ class GameScreen:
         collision = self.check_collision()
         if collision == 'Wumpus':
             self.game_over_popup('Game Over! The agent encountered the Wumpus.')
+        elif collision == 'Pit':  # Added this condition for pit collision
+            self.game_over_popup('Game Over! The agent fell into the pit.')
 
         # Draw the game elements
         for element in self.game_elements:
