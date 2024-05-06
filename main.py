@@ -92,7 +92,7 @@ class GameElement:
         while True:
             self.x = random.randint(0, 3)
             self.y = random.randint(0, 3)
-            if (self.x, self.y) not in taken_positions:
+            if (self.x, self.y) not in taken_positions and (self.x, self.y) != (0, 0):
                 taken_positions.append((self.x, self.y))
                 break
 
@@ -137,39 +137,64 @@ class GameScreen:
         # Instantiate the Screen object
         self.screen_manager = Screen(self.size)
 
+    ROWS = 4
+    COLS = 4
+
     def reset_game(self):
-        taken_positions = [(0, 0)]  # Agent's initial position
+        # Agent's initial position
+        self.agent.x, self.agent.y = 0, 0
+
+        # Manually set the positions of the game elements
         for element in self.game_elements:
-            if element.name == 'Agent':
-                element.reset([(0, 0)])
+            if element.name == 'Wumpus':
+                # Set the position of the Wumpus randomly
+                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
+                wumpus_pos = (element.x, element.y)
             elif element.name == 'Gold':
-                gold_position = (random.randint(0, 3), random.randint(0, 3))
-                while gold_position in taken_positions:
-                    gold_position = (random.randint(0, 3), random.randint(0, 3))
-                element.x, element.y = gold_position
-                taken_positions.append(gold_position)
-            elif element.name == 'Wumpus':
-                wumpus_position = (random.randint(0, 3), random.randint(0, 3))
-                while wumpus_position in taken_positions:
-                    wumpus_position = (random.randint(0, 3), random.randint(0, 3))
-                element.x, element.y = wumpus_position
-                taken_positions.append(wumpus_position)
-                # Place stench at an adjacent point
-                stench_position = (element.x + 1, element.y) if element.x < 3 else (element.x - 1, element.y)
-                self.game_elements[3].x, self.game_elements[3].y = stench_position
-                taken_positions.append(stench_position)
+                # Set the position of the Gold randomly
+                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
+                gold_pos = (element.x, element.y)
             elif element.name == 'Pit':
-                pit_position = (random.randint(0, 3), random.randint(0, 3))
-                while pit_position in taken_positions:
-                    pit_position = (random.randint(0, 3), random.randint(0, 3))
-                element.x, element.y = pit_position
-                taken_positions.append(pit_position)
-                # Place breeze at an adjacent point
-                breeze_position = (element.x, element.y + 1) if element.y < 3 else (element.x, element.y - 1)
-                self.game_elements[4].x, self.game_elements[4].y = breeze_position
-                taken_positions.append(breeze_position)
-            else:
-                element.reset(taken_positions)
+                # Set the position of the Pit randomly
+                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
+                pit_pos = (element.x, element.y)
+            elif element.name == 'Stench':
+                # Compute the positions of the Stench based on the position of the Wumpus
+                stench_pos = self.get_adjacent_positions(wumpus_pos)
+                # Set the position of the Stench
+                for pos in stench_pos:
+                    element.x, element.y = pos
+            elif element.name == 'Glitter':
+                # Compute the positions of the Glitter based on the position of the Gold
+                glitter_pos = self.get_adjacent_positions(gold_pos)
+                # Set the position of the Glitter
+                for pos in glitter_pos:
+                    element.x, element.y = pos
+            elif element.name == 'Breeze':
+                # Compute the positions of the Breeze based on the position of the Pit
+                breeze_pos = self.get_adjacent_positions(pit_pos)
+                # Set the position of the Breeze
+                for pos in breeze_pos:
+                    element.x, element.y = pos
+            elif element.name == 'Arrow':
+                # Compute the positions of the Arrow based on the position of the Wumpus
+                arrow_pos = self.get_adjacent_positions(wumpus_pos)
+                # Set the position of the Arrow
+                for pos in arrow_pos:
+                    element.x, element.y = pos
+
+    def get_adjacent_positions(self, position):
+        row, col = position
+        adjacent_positions = []
+        if row > 0:
+            adjacent_positions.append((row - 1, col))
+        if row < ROWS - 1:
+            adjacent_positions.append((row + 1, col))
+        if col > 0:
+            adjacent_positions.append((row, col - 1))
+        if col < COLS - 1:
+            adjacent_positions.append((row, col + 1))
+        return adjacent_positions
 
     def game_over_popup(self, message):
         print(message)
@@ -278,6 +303,8 @@ class GameScreen:
                 running = self.game_over_popup('Game Over! The agent encountered the Wumpus.')
             elif collision == 'Gold':
                 running = self.game_over_popup('Congratulations! The agent found the gold.')
+            elif collision == 'Pit':
+                running = self.game_over_popup('Game Over! The agent fell into a pit.')
 
             # Delay for 0.5 seconds
             pygame.time.delay(1000)
