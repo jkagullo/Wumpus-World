@@ -104,6 +104,8 @@ class GameScreen:
         self.size = (700, 700)
         self.screen = pygame.display.set_mode(self.size)
         self.visited = [[False] * 4 for _ in range(4)]  # Assuming a 4x4 grid
+        self.ROWS = 4
+        self.COLS = 4
 
         pygame.display.set_caption("Game is Running")
 
@@ -118,15 +120,34 @@ class GameScreen:
         self.agent = Agent(self.cell_size)
 
         # Create the game elements
-        self.game_elements = [
-            GameElement(self.cell_size, 'assets/wumpus.png', 'Wumpus'),
-            GameElement(self.cell_size, 'assets/gold.png', 'Gold'),
-            GameElement(self.cell_size, 'assets/arrow.png', 'Arrow'),
-            GameElement(self.cell_size, 'assets/stench.png', 'Stench'),
-            GameElement(self.cell_size, 'assets/breeze.png', 'Breeze'),
-            GameElement(self.cell_size, 'assets/pit.png', 'Pit'),
-            GameElement(self.cell_size, 'assets/glitter.png', 'Glitter')
-        ]
+        self.game_elements = []
+
+        # Create and place the Wumpus
+        wumpus = GameElement(self.cell_size, 'assets/wumpus.png', 'Wumpus')
+        self.game_elements.append(wumpus)
+
+        # Create and place the Gold
+        gold = GameElement(self.cell_size, 'assets/gold.png', 'Gold')
+        self.game_elements.append(gold)
+
+        # Create and place the Pit
+        pit = GameElement(self.cell_size, 'assets/pit.png', 'Pit')
+        self.game_elements.append(pit)
+
+        # Create and place the Stench near the Wumpus
+        stench = GameElement(self.cell_size, 'assets/stench.png', 'Stench')
+        stench.reset(taken_positions=self.get_adjacent_positions((wumpus.x, wumpus.y)))
+        self.game_elements.append(stench)
+
+        # Create and place the Glitter near the Gold
+        glitter = GameElement(self.cell_size, 'assets/glitter.png', 'Glitter')
+        glitter.reset(taken_positions=self.get_adjacent_positions((gold.x, gold.y)))
+        self.game_elements.append(glitter)
+
+        # Create and place the Breeze near the Pit
+        breeze = GameElement(self.cell_size, 'assets/breeze.png', 'Breeze')
+        breeze.reset(taken_positions=self.get_adjacent_positions((pit.x, pit.y)))
+        self.game_elements.append(breeze)
 
         # Define play again and exit game buttons
         button_width = 150
@@ -137,65 +158,27 @@ class GameScreen:
         # Instantiate the Screen object
         self.screen_manager = Screen(self.size)
 
-    ROWS = 4
-    COLS = 4
+        # Define the number of rows and columns in the grid
+        self.ROWS = 4
+        self.COLS = 4
 
     def reset_game(self):
-        # Agent's initial position
-        self.agent.x, self.agent.y = 0, 0
-
-        # Manually set the positions of the game elements
+        self.visited = [[False] * 4 for _ in range(4)]
+        taken_positions = []
         for element in self.game_elements:
-            if element.name == 'Wumpus':
-                # Set the position of the Wumpus randomly
-                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
-                wumpus_pos = (element.x, element.y)
-            elif element.name == 'Gold':
-                # Set the position of the Gold randomly
-                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
-                gold_pos = (element.x, element.y)
-            elif element.name == 'Pit':
-                # Set the position of the Pit randomly
-                element.x, element.y = random.randint(0, ROWS - 1), random.randint(0, COLS - 1)
-                pit_pos = (element.x, element.y)
-            elif element.name == 'Stench':
-                # Compute the positions of the Stench based on the position of the Wumpus
-                stench_pos = self.get_adjacent_positions(wumpus_pos)
-                # Set the position of the Stench
-                for pos in stench_pos:
-                    element.x, element.y = pos
-            elif element.name == 'Glitter':
-                # Compute the positions of the Glitter based on the position of the Gold
-                glitter_pos = self.get_adjacent_positions(gold_pos)
-                # Set the position of the Glitter
-                for pos in glitter_pos:
-                    element.x, element.y = pos
-            elif element.name == 'Breeze':
-                # Compute the positions of the Breeze based on the position of the Pit
-                breeze_pos = self.get_adjacent_positions(pit_pos)
-                # Set the position of the Breeze
-                for pos in breeze_pos:
-                    element.x, element.y = pos
-            elif element.name == 'Arrow':
-                # Compute the positions of the Arrow based on the position of the Wumpus
-                arrow_pos = self.get_adjacent_positions(wumpus_pos)
-                # Set the position of the Arrow
-                for pos in arrow_pos:
-                    element.x, element.y = pos
+            if element.name in ['Wumpus', 'Gold', 'Pit']:
+                element.reset(taken_positions)
+                taken_positions.append((element.x, element.y))
+            else:
+                element.reset(taken_positions=self.get_adjacent_positions((element.x, element.y)))
+                taken_positions.append((element.x, element.y))
+        self.agent = Agent(self.cell_size)
 
     def get_adjacent_positions(self, position):
-        row, col = position
-        adjacent_positions = []
-        if row > 0:
-            adjacent_positions.append((row - 1, col))
-        if row < ROWS - 1:
-            adjacent_positions.append((row + 1, col))
-        if col > 0:
-            adjacent_positions.append((row, col - 1))
-        if col < COLS - 1:
-            adjacent_positions.append((row, col + 1))
-        return adjacent_positions
-
+        x, y = position
+        positions = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]  # left, right, up, down
+        valid_positions = [(x, y) for x, y in positions if 0 <= x < self.ROWS and 0 <= y < self.COLS]
+        return valid_positions
     def game_over_popup(self, message):
         print(message)
         return False
@@ -285,7 +268,7 @@ class GameScreen:
         self.update_visited(self.agent.x, self.agent.y)
 
         # Collision check and game over handling
-
+        self.get_adjacent_positions((self.agent.x, self.agent.y))
         pygame.display.flip()
 
     def run(self):
@@ -307,7 +290,7 @@ class GameScreen:
                 running = self.game_over_popup('Game Over! The agent fell into a pit.')
 
             # Delay for 0.5 seconds
-            pygame.time.delay(1000)
+            pygame.time.delay(5000)
 
         pygame.quit()
 
