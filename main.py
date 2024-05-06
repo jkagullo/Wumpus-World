@@ -112,10 +112,15 @@ class GameScreen:
             GameElement(self.cell_size, 'assets/pit.png', 'Pit'),
         ]
 
+        # Define play again and exit game buttons
+        button_width = 150
+        button_height = 50
+        self.play_again_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 100, button_width, button_height)
+        self.exit_game_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 200, button_width, button_height)
+
     def game_over_popup(self, message):
         print(message)
-        pygame.quit()
-        sys.exit()
+        return False
 
     def print_element_coordinates(self):
         for element in self.game_elements:
@@ -147,10 +152,20 @@ class GameScreen:
 
             self.screen.fill((0, 0, 0))  # fill the screen with black
             text = self.font.render(message, True, (255, 255, 255))
-            self.screen.blit(text, (self.size[0] // 2, self.size[1] // 2))
+            text_rect = text.get_rect(center=(self.size[0] // 2, self.size[1] // 2 - 50))
+            self.screen.blit(text, text_rect)
 
             pygame.draw.rect(self.screen, (255, 0, 0), self.play_again_button)
             pygame.draw.rect(self.screen, (255, 0, 0), self.exit_game_button)
+
+            # Draw text on the buttons
+            play_again_text = self.font.render("Play Again", True, (255, 255, 255))
+            play_again_text_rect = play_again_text.get_rect(center=self.play_again_button.center)
+            self.screen.blit(play_again_text, play_again_text_rect)
+
+            exit_game_text = self.font.render("Exit Game", True, (255, 255, 255))
+            exit_game_text_rect = exit_game_text.get_rect(center=self.exit_game_button.center)
+            self.screen.blit(exit_game_text, exit_game_text_rect)
 
             pygame.display.flip()
 
@@ -218,7 +233,7 @@ def start_screen():
 
     pygame.display.set_caption("Wumpus World")
 
-    #load background image
+    # Load background image
     background = pygame.image.load('assets/splash.png')
 
     button_width = 150
@@ -245,7 +260,7 @@ def start_screen():
         screen.blit(background, (0,0))  # fill the screen with black
         screen.blit(button_image, button.topleft)  # draw the button image at the position of the button
 
-        pygame.display.flip()  # update the displ
+        pygame.display.flip()  # update the display
 
 if __name__ == "__main__":
     start_screen()
