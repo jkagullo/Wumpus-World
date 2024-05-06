@@ -50,6 +50,7 @@ class Screen:
         self.screen = pygame.display.set_mode(size)
         self.cell_size = size[0] // 4
         self.font = pygame.font.Font(None, 24)
+        self.fog_image = pygame.image.load('assets/fog.png')
         self.background = pygame.image.load('assets/gamescreenbg.png')
 
     def draw_grid(self):
@@ -57,16 +58,22 @@ class Screen:
             for j in range(4):
                 x = i * self.cell_size
                 y = j * self.cell_size
-                rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
-                color = (255, 0, 0) if (i, j) == (0, 0) else (255, 255, 255)
-                pygame.draw.rect(self.screen, color, rect, 1)
                 text = self.font.render(f'({i},{j})', True, (255, 255, 255))
                 self.screen.blit(text, (x + self.cell_size // 2, y + self.cell_size // 2))
 
-    def update(self, agent):
+    '''def draw_fog(self, visited):
+        for i in range(4):
+            for j in range(4):
+                if not visited[i][j] and not (i == 0 and j == 0):  # Exclude (0,0) from fog
+                    x = i * self.cell_size
+                    y = j * self.cell_size
+                    self.screen.blit(self.fog_image, (x, y))'''
+
+    def update(self, agent, visited):
         self.screen.blit(self.background, (0,0))
         self.draw_grid()
         agent.draw(self.screen)
+        #self.draw_fog(visited)
         pygame.display.flip()
 
 class GameElement:
@@ -79,9 +86,15 @@ class GameElement:
     def draw(self, screen):
         screen.blit(self.image, (self.x * self.cell_size, self.y * self.cell_size))
 
-    def reset(self):
-        self.x = random.randint(0, 3)
-        self.y = random.randint(0, 3)
+    def reset(self, taken_positions=None):
+        if taken_positions is None:
+            taken_positions = []
+        while True:
+            self.x = random.randint(0, 3)
+            self.y = random.randint(0, 3)
+            if (self.x, self.y) not in taken_positions:
+                taken_positions.append((self.x, self.y))
+                break
 
 class GameScreen:
     def __init__(self):
@@ -90,6 +103,7 @@ class GameScreen:
         # Set the dimensions of the window
         self.size = (700, 700)
         self.screen = pygame.display.set_mode(self.size)
+        self.visited = [[False] * 4 for _ in range(4)]  # Assuming a 4x4 grid
 
         pygame.display.set_caption("Game is Running")
 
@@ -111,6 +125,7 @@ class GameScreen:
             GameElement(self.cell_size, 'assets/stench.png', 'Stench'),
             GameElement(self.cell_size, 'assets/breeze.png', 'Breeze'),
             GameElement(self.cell_size, 'assets/pit.png', 'Pit'),
+            GameElement(self.cell_size, 'assets/glitter.png', 'Glitter')
         ]
 
         # Define play again and exit game buttons
@@ -119,14 +134,42 @@ class GameScreen:
         self.play_again_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 100, button_width, button_height)
         self.exit_game_button = pygame.Rect((self.size[0] - button_width) // 2, (self.size[1] - button_height) // 2 + 200, button_width, button_height)
 
-    def reset_game(self):
-        # Reset the agent's position
-        self.agent.x = 0
-        self.agent.y = 0
+        # Instantiate the Screen object
+        self.screen_manager = Screen(self.size)
 
-        # Reset the positions of game elements
+    def reset_game(self):
+        taken_positions = [(0, 0)]  # Agent's initial position
         for element in self.game_elements:
-            element.reset()
+            if element.name == 'Agent':
+                element.reset([(0, 0)])
+            elif element.name == 'Gold':
+                gold_position = (random.randint(0, 3), random.randint(0, 3))
+                while gold_position in taken_positions:
+                    gold_position = (random.randint(0, 3), random.randint(0, 3))
+                element.x, element.y = gold_position
+                taken_positions.append(gold_position)
+            elif element.name == 'Wumpus':
+                wumpus_position = (random.randint(0, 3), random.randint(0, 3))
+                while wumpus_position in taken_positions:
+                    wumpus_position = (random.randint(0, 3), random.randint(0, 3))
+                element.x, element.y = wumpus_position
+                taken_positions.append(wumpus_position)
+                # Place stench at an adjacent point
+                stench_position = (element.x + 1, element.y) if element.x < 3 else (element.x - 1, element.y)
+                self.game_elements[3].x, self.game_elements[3].y = stench_position
+                taken_positions.append(stench_position)
+            elif element.name == 'Pit':
+                pit_position = (random.randint(0, 3), random.randint(0, 3))
+                while pit_position in taken_positions:
+                    pit_position = (random.randint(0, 3), random.randint(0, 3))
+                element.x, element.y = pit_position
+                taken_positions.append(pit_position)
+                # Place breeze at an adjacent point
+                breeze_position = (element.x, element.y + 1) if element.y < 3 else (element.x, element.y - 1)
+                self.game_elements[4].x, self.game_elements[4].y = breeze_position
+                taken_positions.append(breeze_position)
+            else:
+                element.reset(taken_positions)
 
     def game_over_popup(self, message):
         print(message)
@@ -187,34 +230,38 @@ class GameScreen:
                 y = j * self.cell_size
                 rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
                 color = (255, 0, 0) if (i, j) == (0, 0) else (255, 255, 255)
-                pygame.draw.rect(self.screen, color, rect, 1)
+
+                # Check if the square has been visited
+                if self.visited[i][j]:
+                    pygame.draw.rect(self.screen, color, rect, 1)
+                else:
+                    # Render fog for unvisited squares
+                    fog_color = (100, 100, 100)  # Adjust fog color as needed
+                    pygame.draw.rect(self.screen, fog_color, rect)
 
                 # Create a text surface and draw it on the screen
                 text = self.font.render(f'({i},{j})', True, (255, 255, 255))
                 self.screen.blit(text, (x + self.cell_size // 2, y + self.cell_size // 2))
 
+    def update_visited(self, x, y):
+        self.visited[x][y] = True
+
     def update(self):
-        self.screen.blit(self.background, (0, 0))  # fill the screen with black
+        self.screen.blit(self.background, (0, 0))
 
-        # Draw the 4x4 grid
-        self.draw_grid()
+        self.screen_manager.draw_grid()  # Draw the grid
 
-        # Update and draw the agent
-        self.agent.update()
-        self.agent.draw(self.screen)
-
-        # Check for collision after updating the agent's position
-        collision = self.check_collision()
-        if collision == 'Wumpus':
-            self.game_over_popup('Game Over! The agent encountered the Wumpus.')
-        elif collision == 'Pit':  # Added this condition for pit collision
-            self.game_over_popup('Game Over! The agent fell into the pit.')
-
-        # Draw the game elements
+        # Render all game elements
         for element in self.game_elements:
             element.draw(self.screen)
 
-        pygame.display.flip()  # update the display
+        self.agent.update()
+        self.agent.draw(self.screen)
+        self.update_visited(self.agent.x, self.agent.y)
+
+        # Collision check and game over handling
+
+        pygame.display.flip()
 
     def run(self):
         self.print_element_coordinates()
@@ -233,9 +280,10 @@ class GameScreen:
                 running = self.game_over_popup('Congratulations! The agent found the gold.')
 
             # Delay for 0.5 seconds
-            pygame.time.delay(500)
+            pygame.time.delay(1000)
 
         pygame.quit()
+
 
 def start_screen():
     pygame.init()
