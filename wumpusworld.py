@@ -1,12 +1,14 @@
 import pygame
 import sys
 import random
+from collections import deque
 
 COLS, ROWS = 4, 4
 
 wumpus_pos = None
 
-#GAME SCREEN
+
+# Game Loop
 def game_screen():
     size = (700, 700)
     screen = pygame.display.set_mode(size)
@@ -18,75 +20,50 @@ def game_screen():
     # Create a font object
     font = pygame.font.Font(None, 36)
 
-    image = pygame.image.load("assets/wumpus.png")  # Replace "image_name.jpg" with the filename of your image
-    image_rect = image.get_rect()
-
-    # stench
-    stench_image = pygame.image.load("assets/stench.png")
-    stench_image_rect = image.get_rect()
-
-    # pit
-    pit_image = pygame.image.load("assets/pit.png")
-    pit_image_rect = image.get_rect()
-
-    # breeze
-    breeze_image = pygame.image.load("assets/breeze.png")
-    breeze_image_rect = image.get_rect()
-
-    gold_image = pygame.image.load("assets/gold.png")
-    gold_image_rect = image.get_rect()
-
-    arrow_image = pygame.image.load("assets/arrow.png")
-    arrow_image_rect = image.get_rect()
-
-    agent_up_image = pygame.image.load("assets/agent/agent_up.png")
-    agent_up_image_rect = image.get_rect()
-
-    agent_down_image = pygame.image.load("assets/agent/agent_down.png")
-    agent_down_image_rect = image.get_rect()
-
-    agent_left_image = pygame.image.load("assets/agent/agent_left.png")
-    agent_left_image_rect = image.get_rect()
-
-    agent_right_image = pygame.image.load("assets/agent/agent_right.png")
-    agent_right_image_rect = image.get_rect()
-
+    # Load images for game elements
     agent_images = {
-        "up": agent_up_image,
-        "down": agent_down_image,
-        "left": agent_left_image,
-        "right": agent_right_image
+        "up": pygame.image.load("assets/agent/agent_up.png"),
+        "down": pygame.image.load("assets/agent/agent_down.png"),
+        "left": pygame.image.load("assets/agent/agent_left.png"),
+        "right": pygame.image.load("assets/agent/agent_right.png")
     }
+    wumpus_image = pygame.image.load("assets/wumpus.png")
+    stench_image = pygame.image.load("assets/stench.png")
+    pit_image = pygame.image.load("assets/pit.png")
+    breeze_image = pygame.image.load("assets/breeze.png")
+    gold_image = pygame.image.load("assets/gold.png")
+    arrow_image = pygame.image.load("assets/arrow.png")
 
-    agent_pos = (0,0)
+    # Initialize agent position and other game element positions
+    agent_pos = (0, 0)
     stench_pos = get_wumpus()
     breeze_pos = get_pit()
     gold_pos = get_gold()
     arrow_pos = get_arrow()
 
     running = True
+    # Inside the game_screen() function
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Draw the grid
+        # Draw the grid and game elements
         for i in range(COLS):
             for j in range(ROWS):
                 rect = pygame.Rect(i * cell_width, j * cell_height, cell_width, cell_height)
-                pygame.draw.rect(screen, (255, 255, 255), rect, 1)  # Draw a white rectangle with a width of 1
+                pygame.draw.rect(screen, (255, 255, 255), rect, 1)  # Draw grid lines
 
-                # Create a text surface
-                text = font.render(f'({i},{j})', True, (255, 255, 255))  # Change text color to white
-                text_rect = text.get_rect(center=(i * cell_width + cell_width // 2, j * cell_height + cell_height // 2))
-
+                # Draw agent
                 if (i, j) == agent_pos:
                     agent_rect = pygame.Rect(i * cell_width, j * cell_height, cell_width, cell_height)
-                    screen.blit(agent_images["down"], agent_rect)  # Replace "up" with the agent's current direction
+                    # Update agent image based on its direction
+                    agent_image = agent_images["down"]  # Placeholder, update based on actual direction
+                    screen.blit(agent_image, agent_rect)
 
                 if i == wumpus_pos[0] and j == wumpus_pos[1]:
                     wumpus_rect = pygame.Rect(i * cell_width, j * cell_height, cell_width, cell_height)
-                    screen.blit(image, wumpus_rect)
+                    screen.blit(wumpus_image, wumpus_rect)
 
                 for pos in stench_pos:
                     if i == pos[0] and j == pos[1]:
@@ -95,7 +72,7 @@ def game_screen():
 
                 if i == pit_pos[0] and j == pit_pos[1]:
                     pit_rect = pygame.Rect(i * cell_width, j * cell_height, cell_width, cell_height)
-                    screen.blit(pit_image,pit_rect)
+                    screen.blit(pit_image, pit_rect)
 
                 for pos in breeze_pos:
                     if i == pos[0] and j == pos[1]:
@@ -110,10 +87,6 @@ def game_screen():
                     arrow_rect = pygame.Rect(i * cell_width, j * cell_height, cell_width, cell_height)
                     screen.blit(arrow_image, arrow_rect)
 
-
-                # Draw the text surface on the screen
-                screen.blit(text, text_rect)
-
         pygame.display.flip()
     pygame.quit()
 
@@ -127,9 +100,8 @@ def get_wumpus():
         if wumpus_pos not in [(0,0),(0,1),(1,0),(1,1)]:
             break
 
-    row, col = wumpus_pos
+    row,col = wumpus_pos
     stench_pos = []
-
     if row > 0:
         stench_pos.append((row - 1, col))
     if row < ROWS - 1:
@@ -138,7 +110,6 @@ def get_wumpus():
         stench_pos.append((row, col - 1))
     if col < COLS-1:
         stench_pos.append((row, col + 1))
-
     print(f"wumpus pos: {wumpus_pos}")
     print(f"stench pos: {stench_pos}")
 
