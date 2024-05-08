@@ -303,6 +303,7 @@ class GameScreen:
                 arrow_hit = world.check_arrow_hit(agent.pos, agent.arrow_direction)
                 if arrow_hit:
                     print("The agent shot the wumpus and won the game!")
+                    return "win"
                     # implement winning condition
                 agent.is_shooting = False
 
@@ -331,6 +332,21 @@ class GameScreen:
             else:
                 break  # If the arrow is out of the grid, stop the animation
 
+    def check_game_state(self, world, agent):
+        if agent.pos == world.wumpus_pos:
+            print("The agent was killed by the wumpus, the agent lose!")
+            return "lose"
+        elif agent.pos == world.pit_pos:
+            print("The agent fell into a pit, the agent lose!")
+            return "lose"
+        elif agent.pos == world.gold_pos:
+            print("The agent grabs the gold, the agent won!")
+            return "win"
+        elif agent.is_shooting and world.check_arrow_hit(agent.pos, agent.arrow_direction):
+            print("The agent shot the wumpus, the agent won!")
+            return "win"
+        return None
+
     def run(self):
         world = WumpusWorld(self.COLS, self.ROWS)
         world.setup()
@@ -344,12 +360,69 @@ class GameScreen:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     agent.move(event.key)
+                    game_state = self.check_game_state(world, agent)
 
-            self.screen.blit(self.game_background_image,(0,0))
-            self.draw_grid()  # Draw the grid
-            self.draw_elements(world, agent) # Draw the elements
-            self.handle_arrow(world,agent)
+            self.screen.blit(self.game_background_image, (0, 0))
+            self.draw_grid()
+            self.draw_elements(world, agent)
+            self.handle_arrow(world, agent)
+            game_state = self.check_game_state(world, agent)
+            if game_state is not None:
+                running = False
+                end_screen = EndGameScreen(self)
+                end_screen.run()
             pygame.display.flip()
+
+
+class EndGameScreen:
+    def __init__(self, game_screen):
+        self.game_screen = game_screen
+        pygame.init()
+        self.size = (500, 500)
+        self.screen = pygame.display.set_mode(self.size)
+
+        self.new_game_button_image = pygame.image.load("assets/playagainbutton.png")
+        self.exit_game_button_image = pygame.image.load("assets/exitbutton.png")
+
+        pygame.display.set_caption("Game Ended.")
+
+        self.end_bg_image = pygame.image.load("assets/endbg.png")
+
+    def run(self):
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.new_game_button_image_rect.collidepoint(event.pos):
+                        pygame.quit()  # Dispose of the initial game
+                        game_screen = GameScreen()  # Start a new game
+                        game_screen.run()
+                        running = False
+                    elif self.exit_game_button_image_rect.collidepoint(event.pos):
+                        running = False
+                        pygame.quit()
+                        quit()
+
+            self.screen.blit(self.end_bg_image, (0, 0))
+
+            # Get rect for button images
+            self.new_game_button_image_rect = self.new_game_button_image.get_rect()
+            self.exit_game_button_image_rect = self.exit_game_button_image.get_rect()
+
+            # Center the buttons horizontally and vertically
+            self.new_game_button_image_rect.center = (self.size[0] // 2, self.size[1] // 2 - 10)
+            self.exit_game_button_image_rect.center = (self.size[0] // 2, self.size[1] // 2 + 60)
+
+            # Blit button images onto the screen
+            self.screen.blit(self.new_game_button_image, self.new_game_button_image_rect)
+            self.screen.blit(self.exit_game_button_image, self.exit_game_button_image_rect)
+
+            pygame.display.flip()
+
 
 if __name__ == "__main__":
     start_screen = StartScreen()
