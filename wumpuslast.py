@@ -148,14 +148,13 @@ class WumpusWorld:
 
         # Place gold and glitter
         self.place_gold_and_glitter()
-        print(f"Gold pos: {self.pit_pos}")
+        print(f"Gold pos: {self.gold_pos}")
         print(f"Glitter pos: {self.glitter_pos}")
 
         # Place arrow
         self.place_arrow()
         print(f"Arrow pos: {self.arrow_pos}")
 
-        print("\n")
         # Print occupied cells
         print(f"Occupied cells: {self.occupied_cells}")
 
@@ -331,7 +330,6 @@ class GameScreen:
                 pygame.time.wait(100)  # Wait for a short time to create the animation effect
             else:
                 break  # If the arrow is out of the grid, stop the animation
-
 
     def run(self):
         world = WumpusWorld(self.COLS, self.ROWS)
