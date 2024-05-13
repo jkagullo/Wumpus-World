@@ -73,11 +73,24 @@ class Agent:
         elif self.direction == "right":
             self.pos = (x + 1, y) if x < self.COLS - 1 else (x, y)
 
+    def handle_shooting(self):
+        if not self.is_shooting and self.has_arrow:
+            x, y = self.pos
+            # Check if the Wumpus is detected in any of the adjacent cells
+            if (x + 1, y) == self.world.wumpus_pos or \
+                    (x - 1, y) == self.world.wumpus_pos or \
+                    (x, y + 1) == self.world.wumpus_pos or \
+                    (x, y - 1) == self.world.wumpus_pos:
+                # If the Wumpus is detected, shoot the arrow
+                self.shoot()
+                print("The agent shoots the arrow at the Wumpus!")
+
     def shoot(self):
         if self.has_arrow:
             self.is_shooting = True
             self.arrow_direction = self.direction
             self.has_arrow = False
+
 
 class WumpusWorld:
     def __init__(self, cols, rows):
@@ -412,6 +425,8 @@ class GameScreen:
                     # Move the agent automatically
                     percept = (world.is_stench(agent.pos), world.is_breeze(agent.pos))
                     agent.move(percept)
+
+            agent.handle_shooting()
 
             self.screen.blit(self.game_background_image, (0, 0))
             self.draw_grid()
