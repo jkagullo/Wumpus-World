@@ -1,1 +1,2 @@
-Wumpus World using Rules of Inference AI
+Wumpus World Game | Pygame | Inference Rules
+
