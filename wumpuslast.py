@@ -200,6 +200,8 @@ class GameScreen:
         self.font = pygame.font.Font(None, 24)  # Create a font object
         # Background image
         self.game_background_image = pygame.image.load("assets/gamescreenbg.png")
+        self.fog_covered_cells = {(i, j) for i in range(self.COLS) for j in range(self.ROWS)}
+        self.fog_covered_cells.remove((0, 0))  # The initial cell is not covered by fog
 
         # Load images for elements
         self.wumpus_image = pygame.image.load("assets/wumpus.png")
@@ -238,9 +240,8 @@ class GameScreen:
     def draw_grid(self):
         for i in range(self.COLS):
             for j in range(self.ROWS):
-                pygame.draw.rect(self.screen, (255, 255, 255), (i * self.cell_width, j * self.cell_height, self.cell_width, self.cell_height), 1)
-                text = self.font.render(f"({i}, {j})", True, (255, 255, 255))
-                self.screen.blit(text, (i * self.cell_width + 10, j * self.cell_height + 10))  # Adjust the position of the text
+                pygame.draw.rect(self.screen, (0, 0, 0),
+                (i * self.cell_width, j * self.cell_height, self.cell_width, self.cell_height), 1)
 
     def draw_elements(self,world,agent):
         # draw stench
@@ -286,28 +287,38 @@ class GameScreen:
         else:
             self.screen.blit(self.agent_images[agent.direction], agent_rect)
 
+        for pos in self.fog_covered_cells:
+            fog_rect = pygame.Rect(pos[0] * self.cell_width, pos[1] * self.cell_height, self.cell_width, self.cell_height)
+            self.screen.blit(self.fog_image, fog_rect)
+
     # Implement the arrow
     def handle_arrow(self, world, agent):
-        # if the agent is on the arrow cell and doesnt have the arrow yet, pick it up
+        # if the agent is on the arrow cell and doesn't have the arrow yet, pick it up
         if agent.pos == world.arrow_pos and not agent.has_arrow:
             agent.has_arrow = True
-            world.arrow_pos = None # remove the arrow from the world
+            world.arrow_pos = None  # remove the arrow from the world
             print("The agent grabs the arrow")
 
-        keys = pygame.key.get_pressed()
+        keys = pygame.key.get_pressed()  # Get the state of all keyboard buttons
         if keys[pygame.K_SPACE] and not agent.is_shooting and agent.has_arrow:
             agent.shoot()
             print("The agent shoots the arrow")
-            self.animate_arrow(agent)  # Animate the arrow
+            self.animate_arrow(agent, world)  # Pass world to animate_arrow
             if agent.is_shooting:
                 arrow_hit = world.check_arrow_hit(agent.pos, agent.arrow_direction)
                 if arrow_hit:
-                    print("The agent shot the wumpus and won the game!")
-                    return "win"
-                    # implement winning condition
+                    print("The agent shot the wumpus!")
+                    self.fog_covered_cells.discard(world.wumpus_pos)  # Reveal the wumpus position
+                    pygame.display.flip()  # Update the display to reveal the wumpus immediately
+                    game_state = self.check_game_state(world, agent)  # Check game state
+                    if game_state == "win":
+                        pygame.time.wait(2000)  # Wait for 2 seconds before showing end screen
+                        running = False
+                        end_screen = EndGameScreen(self)
+                        end_screen.run()
                 agent.is_shooting = False
 
-    def animate_arrow(self, agent):
+    def animate_arrow(self, agent, world):
         arrow_direction = agent.arrow_direction
         arrow_pos = list(agent.pos)  # Start from the agent's position
         while True:
@@ -329,6 +340,10 @@ class GameScreen:
                 self.screen.blit(self.arrow_images[arrow_direction], arrow_rect)
                 pygame.display.flip()
                 pygame.time.wait(100)  # Wait for a short time to create the animation effect
+
+                # Check if the arrow hit the wumpus
+                if tuple(arrow_pos) == world.wumpus_pos:
+                    break  # If the arrow hit the wumpus, stop the animation
             else:
                 break  # If the arrow is out of the grid, stop the animation
 
@@ -361,6 +376,8 @@ class GameScreen:
                 elif event.type == pygame.KEYDOWN:
                     agent.move(event.key)
                     game_state = self.check_game_state(world, agent)
+                    self.fog_covered_cells.discard(
+                        agent.pos)  # Remove the agent's current cell from the fog-covered cells
 
             self.screen.blit(self.game_background_image, (0, 0))
             self.draw_grid()
@@ -368,6 +385,8 @@ class GameScreen:
             self.handle_arrow(world, agent)
             game_state = self.check_game_state(world, agent)
             if game_state is not None:
+                pygame.display.flip()
+                pygame.time.wait(2000)  # Wait for 2 seconds
                 running = False
                 end_screen = EndGameScreen(self)
                 end_screen.run()
