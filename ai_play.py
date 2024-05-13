@@ -83,7 +83,7 @@ class Agent:
         elif self.direction == "right":
             self.pos = (x + 1, y) if x < self.COLS - 1 else (x, y)
 
-    def handle_shooting(self):
+    def handle_shooting(self, world):
         if not self.is_shooting and self.has_arrow:
             x, y = self.pos
             # Check if the Wumpus is detected in any of the adjacent cells
@@ -269,7 +269,10 @@ class GameScreen:
         self.font = pygame.font.Font(None, 24)  # Create a font object
         # Background image
         self.game_background_image = pygame.image.load("assets/gamescreenbg.png")
+        self.fog_covered_cells = {(i, j) for i in range(self.COLS) for j in range(self.ROWS) if (i, j) != (0, 0)}
 
+        # load fog
+        self.fog_image = pygame.image.load("assets/fog.png")
         # Load images for elements
         self.wumpus_image = pygame.image.load("assets/wumpus.png")
         self.arrow_image = pygame.image.load("assets/arrow.png")
@@ -355,12 +358,19 @@ class GameScreen:
         else:
             self.screen.blit(self.agent_images[agent.direction], agent_rect)
 
+        for pos in self.fog_covered_cells:
+            fog_rect = pygame.Rect(pos[0] * self.cell_width, pos[1] * self.cell_height, self.cell_width,
+                                   self.cell_height)
+            self.screen.blit(self.fog_image, fog_rect)
+
     # Implement the arrow
     def handle_arrow(self, world, agent):
         # if the agent is on the arrow cell and doesnt have the arrow yet, pick it up
         if agent.pos == world.arrow_pos and not agent.has_arrow:
             agent.has_arrow = True
             world.arrow_pos = None # remove the arrow from the world
+            if agent.pos in self.fog_covered_cells:
+                self.fog_covered_cells.remove(agent.pos)  # Remove fog from the cell
             print("The agent grabs the arrow")
 
         keys = pygame.key.get_pressed()
@@ -436,8 +446,8 @@ class GameScreen:
                     percept = (world.is_stench(agent.pos), world.is_breeze(agent.pos))
                     agent.move(percept)
 
-            agent.handle_shooting()
-
+            agent.handle_shooting(world)
+            self.fog_covered_cells.discard(agent.pos)
             self.screen.blit(self.game_background_image, (0, 0))
             self.draw_grid()
             self.draw_elements(world, agent)
