@@ -63,7 +63,17 @@ class Agent:
                 # Change direction randomly
                 self.direction = random.choice(["up", "down", "left", "right"])
 
-        # Move forward
+        # Face the direction first
+        if self.direction == "up":
+            self.direction = "up"
+        elif self.direction == "down":
+            self.direction = "down"
+        elif self.direction == "left":
+            self.direction = "left"
+        elif self.direction == "right":
+            self.direction = "right"
+
+        # Then move forward
         if self.direction == "up":
             self.pos = (x, y - 1) if y > 0 else (x, y)
         elif self.direction == "down":
