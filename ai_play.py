@@ -10,28 +10,68 @@ class Agent:
         self.has_arrow = False
         self.is_shooting = False
         self.arrow_direction = self.direction
+        self.knowledge_base = {
+            "visited": set(),
+            "stench": set(),
+            "breeze": set()
+        }
 
-        # Initialize knowledge base with all false
-        self.knowledge_base = [[[False for _ in range(7)] for _ in range(cols)] for _ in range(rows)]
-
-    def move(self, key):
-        direction = random.choice(["up", "down", "left", "right"])
-
-        old_pos = self.pos
-
+    def process_percept(self, percept):
+        stench, breeze = percept
         x, y = self.pos
-        if direction == "up" and y > 0:
-            self.pos = (x, y - 1)
-        elif direction == "down" and y < self.ROWS - 1:
-            self.pos = (x, y + 1)
-        elif direction == "left" and x > 0:
-            self.pos = (x - 1, y)
-        elif direction == "right" and x < self.COLS - 1:
-            self.pos = (x + 1, y)
-        self.direction = direction
 
-        print(f"The agent moved from {old_pos} to {self.pos}")
+        # Update knowledge base
+        self.knowledge_base["visited"].add((x, y))
+        if stench:
+            self.knowledge_base["stench"].add((x, y))
+        if breeze:
+            self.knowledge_base["breeze"].add((x, y))
 
+    def move(self, percept):
+        x, y = self.pos
+
+        # Unpack the percept tuple
+        stench, breeze = percept
+
+        # Process the percept and update knowledge base
+        self.process_percept(percept)
+
+        # Apply logical reasoning based on the knowledge base and choose direction
+        if (x, y) in self.knowledge_base["stench"]:
+            # If stench is perceived, avoid moving towards it
+            if self.direction == "up":
+                self.direction = "right" if random.random() < 0.5 else "left"
+            elif self.direction == "down":
+                self.direction = "right" if random.random() < 0.5 else "left"
+            elif self.direction == "left":
+                self.direction = "up" if random.random() < 0.5 else "down"
+            elif self.direction == "right":
+                self.direction = "up" if random.random() < 0.5 else "down"
+        elif (x, y) in self.knowledge_base["breeze"]:
+            # If breeze is perceived, avoid moving towards it
+            if self.direction == "up":
+                self.direction = "right" if random.random() < 0.5 else "left"
+            elif self.direction == "down":
+                self.direction = "right" if random.random() < 0.5 else "left"
+            elif self.direction == "left":
+                self.direction = "up" if random.random() < 0.5 else "down"
+            elif self.direction == "right":
+                self.direction = "up" if random.random() < 0.5 else "down"
+        else:
+            # If no percept is present, move randomly
+            if random.random() < 0.5:
+                # Change direction randomly
+                self.direction = random.choice(["up", "down", "left", "right"])
+
+        # Move forward
+        if self.direction == "up":
+            self.pos = (x, y - 1) if y > 0 else (x, y)
+        elif self.direction == "down":
+            self.pos = (x, y + 1) if y < self.ROWS - 1 else (x, y)
+        elif self.direction == "left":
+            self.pos = (x - 1, y) if x > 0 else (x, y)
+        elif self.direction == "right":
+            self.pos = (x + 1, y) if x < self.COLS - 1 else (x, y)
 
     def shoot(self):
         if self.has_arrow:
@@ -134,6 +174,12 @@ class WumpusWorld:
                 if (x, arrow_pos[1]) == self.wumpus_pos:
                     return True
         return False
+
+    def is_stench(self, pos):
+        return pos in self.stench_pos
+
+    def is_breeze(self, pos):
+        return pos in self.breeze_pos
 
     def setup(self):
         # Place wumpus and stench
@@ -353,14 +399,19 @@ class GameScreen:
         # Define the agent from agent class
         agent = Agent(self.COLS, self.ROWS)
 
+        # Define the timer event for moving the agent
+        MOVE_AGENT_EVENT = pygame.USEREVENT + 1
+        pygame.time.set_timer(MOVE_AGENT_EVENT, 1000)  # Move the agent every 1000 milliseconds (1 second)
+
         running = True
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.KEYDOWN:
-                    agent.move(event.key)
-                    game_state = self.check_game_state(world, agent)
+                elif event.type == MOVE_AGENT_EVENT:
+                    # Move the agent automatically
+                    percept = (world.is_stench(agent.pos), world.is_breeze(agent.pos))
+                    agent.move(percept)
 
             self.screen.blit(self.game_background_image, (0, 0))
             self.draw_grid()
